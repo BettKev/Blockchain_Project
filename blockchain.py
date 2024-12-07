@@ -144,12 +144,6 @@ class Blockchain:
             print(f"Nonce: {block.nonce}")
             print("-" * 30)
 
-import socket
-import json
-import threading
-import time
-
-
 class Node:
     def __init__(self, host="127.0.0.1", port=5000, bootstrap=("127.0.0.1", 4000)):
         self.host = host
@@ -283,23 +277,27 @@ class Node:
         Send data to a specific peer.
         """
         try:
+            # Validate that peer is a tuple of (host, port)
+            if not isinstance(peer, tuple) or len(peer) != 2:
+                raise ValueError("Peer must be a tuple of (host, port)")
+
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(peer)
             client.send(json.dumps(data).encode('utf-8'))
             client.close()
+            print(f"Sent data to peer {peer}: {data}")
         except Exception as e:
-            print(f"Failed to connect to peer {peer}: {e}")
+            print(f"Failed to send data to peer {peer}: {e}")
 
     def discover_peers(self):
         """
-        Broadcast a peer discovery message to all known peers.
+        Share the updated peer list with all peers to ensure connectivity.
         """
-        discovery_message = {
-            'type': 'peer_discovery',
-            'peers': [(self.host, self.port)]
-        }
         for peer in self.peers:
-            self.send_to_peer(peer, discovery_message)
+            self.send_to_peer(peer, {
+                'type': 'peer_discovery',
+                'peers': self.peers
+            })
 
     def start(self):
         """
@@ -324,9 +322,4 @@ if __name__ == "__main__":
     random_port = random.randint(5000, 5100)
     node = Node(host="127.0.0.1", port=random_port)
     node.start()
-    # threading.Thread(target=node.start_server).start()
-    # node.peers.append(("127.0.0.1", 5000))
-    # node.discover_peers()  # Announce itself to known peers
-    # transaction = Transaction("Alice", "Bob", 10)
-    # node.blockchain.create_transaction(transaction)
-    # node.broadcast_transaction(transaction)
+    
