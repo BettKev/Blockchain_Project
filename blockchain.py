@@ -3,6 +3,7 @@ import time
 import json
 import socket
 import threading
+import random
 
 class Transaction:
     def __init__(self, sender, recipient, amount):
@@ -143,15 +144,25 @@ class Blockchain:
             print(f"Nonce: {block.nonce}")
             print("-" * 30)
 
+import socket
+import json
+import threading
+import time
+
+
 class Node:
-    def __init__(self, host, port):
+    def __init__(self, host="127.0.0.1", port=5000, bootstrap=("127.0.0.1", 4000)):
         self.host = host
         self.port = port
-        self.blockchain = Blockchain()
+        self.bootstrap = bootstrap
         self.peers = []
-        self.discovery_port = 5001  # Port for peer discovery
+        # Placeholder for blockchain; assuming `Blockchain` and related classes are defined
+        self.blockchain = Blockchain()
 
     def start_server(self):
+        """
+        Start a server to handle incoming connections from peers or clients.
+        """
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.bind((self.host, self.port))
         server.listen(5)
@@ -159,56 +170,96 @@ class Node:
 
         while True:
             client, address = server.accept()
-            print(f"Connection from {address}")
             threading.Thread(target=self.handle_client, args=(client,)).start()
 
     def handle_client(self, client):
+        """
+        Handle incoming client connections and process their requests.
+        """
         try:
             data = client.recv(1024).decode('utf-8')
             request = json.loads(data)
 
             if request['type'] == 'transaction':
                 transaction = Transaction(
-                    request['sender'], request['recipient'], request['amount']
+                    sender=request['sender'],
+                    recipient=request['recipient'],
+                    amount=request['amount']
                 )
                 if self.blockchain.create_transaction(transaction):
+                    print(f"Transaction from {transaction.sender} to {transaction.recipient} is valid.")
                     self.broadcast_transaction(transaction)
-                    print(f"Transaction from {transaction.sender} to {transaction.recipient} received and broadcasted.")
                 else:
-                    print(f"Invalid transaction from {transaction.sender} to {transaction.recipient}.")
-
-            elif request['type'] == 'chain_request':
-                chain_data = [block.__dict__ for block in self.blockchain.chain]
-                client.send(json.dumps(chain_data).encode('utf-8'))
+                    print("Received an invalid transaction.")
 
             elif request['type'] == 'new_block':
-                new_block = request['block']
-                new_block_obj = Block(
-                    new_block['index'], new_block['previous_hash'],
-                    new_block['timestamp'],
-                    [Transaction(**tx) for tx in new_block['transactions']],
-                    new_block['difficulty'],
-                    new_block['miner_address']
+                block = request['block']
+                new_block = Block(
+                    index=block['index'],
+                    previous_hash=block['previous_hash'],
+                    timestamp=block['timestamp'],
+                    transactions=[Transaction(**tx) for tx in block['transactions']],
+                    difficulty=block['difficulty'],
+                    miner_address=block['miner_address']
                 )
-                if self.blockchain.is_block_valid(new_block_obj, self.blockchain.get_latest_block()):
-                    self.blockchain.add_block()
-                    self.broadcast_new_block(new_block_obj)
+                if self.blockchain.is_block_valid(new_block, self.blockchain.get_latest_block()):
+                    self.blockchain.add_block(new_block)
+                    print("New block added to the blockchain.")
+                    self.broadcast_new_block(new_block)
                 else:
-                    print("Received invalid block, not added to the chain.")
+                    print("Received an invalid block.")
 
             elif request['type'] == 'peer_discovery':
                 new_peers = request['peers']
                 for peer in new_peers:
-                    if peer not in self.peers:
+                    if peer not in self.peers and peer != (self.host, self.port):
                         self.peers.append(peer)
-                print(f"Discovered new peers: {new_peers}")
+                print(f"Updated peer list: {self.peers}")
+                self.discover_peers()
 
         except Exception as e:
             print(f"Error handling client: {e}")
         finally:
             client.close()
 
+    def register_with_bootstrap(self):
+        """
+        Register this node with the bootstrap server to initialize the peer list.
+        """
+        try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.connect(self.bootstrap)
+            registration_data = {
+                'type': 'register',
+                'host': self.host,
+                'port': self.port
+            }
+            client.send(json.dumps(registration_data).encode('utf-8'))
+            print(f"Registered with bootstrap server at {self.bootstrap}")
+            client.close()
+        except Exception as e:
+            print(f"Failed to register with bootstrap server: {e}")
+
+    def fetch_peers(self):
+        """
+        Fetch a list of peers from the bootstrap server.
+        """
+        try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.connect(self.bootstrap)
+            request_data = {'type': 'get_peers'}
+            client.send(json.dumps(request_data).encode('utf-8'))
+            data = client.recv(1024).decode('utf-8')
+            self.peers = json.loads(data)
+            print(f"Discovered peers: {self.peers}")
+            client.close()
+        except Exception as e:
+            print(f"Failed to fetch peers: {e}")
+
     def broadcast_transaction(self, transaction):
+        """
+        Broadcast a transaction to all known peers.
+        """
         for peer in self.peers:
             self.send_to_peer(peer, {
                 'type': 'transaction',
@@ -218,6 +269,9 @@ class Node:
             })
 
     def broadcast_new_block(self, block):
+        """
+        Broadcast a new block to all known peers.
+        """
         for peer in self.peers:
             self.send_to_peer(peer, {
                 'type': 'new_block',
@@ -225,6 +279,9 @@ class Node:
             })
 
     def send_to_peer(self, peer, data):
+        """
+        Send data to a specific peer.
+        """
         try:
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(peer)
@@ -234,6 +291,9 @@ class Node:
             print(f"Failed to connect to peer {peer}: {e}")
 
     def discover_peers(self):
+        """
+        Broadcast a peer discovery message to all known peers.
+        """
         discovery_message = {
             'type': 'peer_discovery',
             'peers': [(self.host, self.port)]
@@ -241,12 +301,32 @@ class Node:
         for peer in self.peers:
             self.send_to_peer(peer, discovery_message)
 
+    def start(self):
+        """
+        Start the node by launching the server, registering with the bootstrap server,
+        fetching the initial peer list, and periodically discovering new peers.
+        """
+        threading.Thread(target=self.start_server).start()
+        self.register_with_bootstrap()
+        self.fetch_peers()
+        threading.Thread(target=self.peer_discovery_loop).start()
+
+    def peer_discovery_loop(self):
+        """
+        Continuously discover new peers at regular intervals.
+        """
+        while True:
+            self.discover_peers()
+            time.sleep(30)  # Adjust interval as needed
+
 # Example usage
 if __name__ == "__main__":
-    node = Node(host="127.0.0.1", port=int(input(f"Enter port to run on between 5000 and 6000: \n")))
-    threading.Thread(target=node.start_server).start()
-    node.peers.append(("127.0.0.1", 5000))
-    node.discover_peers()  # Announce itself to known peers
+    random_port = random.randint(5000, 5100)
+    node = Node(host="127.0.0.1", port=random_port)
+    node.start()
+    # threading.Thread(target=node.start_server).start()
+    # node.peers.append(("127.0.0.1", 5000))
+    # node.discover_peers()  # Announce itself to known peers
     # transaction = Transaction("Alice", "Bob", 10)
     # node.blockchain.create_transaction(transaction)
     # node.broadcast_transaction(transaction)

@@ -23,6 +23,26 @@ if __name__ == "__main__":
     sender = input(f"Enter sender name: ")
     recipient = input(f"Enter recipient name: ")
     amount = int(input(f"Enter amount to send: "))
-    peers = [("127.0.0.1", 5000), ("127.0.0.1", 5001), ("127.0.0.1", 5002), ("127.0.0.1", 5003)]  # Add all known peer addresses
+    # peers = [("127.0.0.1", 4000), ]  # Add all known peer addresses
 
-    send_transaction(sender, recipient, amount, peers)
+    import random
+
+# Generate a random list of peer tuples
+def generate_random_peers(ip="127.0.0.1", start_port=5000, end_port=5100, num_peers=10):
+    """
+    Generate a list of random peer tuples with the format (ip, port).
+    :param ip: The IP address to use for all peers.
+    :param start_port: The starting port number (inclusive).
+    :param end_port: The ending port number (inclusive).
+    :param num_peers: The number of random peers to generate.
+    :return: A list of tuples (ip, port).
+    """
+    ports = random.sample(range(start_port, end_port + 1), num_peers)
+    return [(ip, port) for port in ports]
+
+# Example usage
+peers = generate_random_peers(start_port=5000, end_port=5100, num_peers=100)
+print(peers)
+
+
+send_transaction(sender, recipient, amount, peers)
