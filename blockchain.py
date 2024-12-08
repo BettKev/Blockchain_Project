@@ -144,7 +144,7 @@ class Blockchain:
 
 # Example usage
 if __name__ == "__main__":
-    random_port = random.randint(5000, 5100)
+    random_port = random.randint(5000, 5010)
     node = Node(host="127.0.0.1", port=random_port)
     node.start()
     

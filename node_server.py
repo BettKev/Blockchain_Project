@@ -108,7 +108,14 @@ class Node:
             request_data = {'type': 'get_peers'}
             client.send(json.dumps(request_data).encode('utf-8'))
             data = client.recv(1024).decode('utf-8')
-            self.peers = json.loads(data)
+            
+            # Parse the data received
+            peer_list = json.loads(data)
+            print(f"Parsed peer list: {peer_list}")  # Debugging output
+        
+            # Convert the list of lists into a tuple of tuples
+            self.peers = [tuple(peer) for peer in peer_list]
+
             print(f"Discovered peers: {self.peers}")
             client.close()
         except Exception as e:
@@ -146,6 +153,7 @@ class Node:
                 raise ValueError("Peer must be a tuple of (host, port)")
 
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.settimeout(5) #timeout for connection attempt
             client.connect(peer)
             client.send(json.dumps(data).encode('utf-8'))
             client.close()

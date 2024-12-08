@@ -28,7 +28,7 @@ if __name__ == "__main__":
     import random
 
 # Generate a random list of peer tuples
-def generate_random_peers(ip="127.0.0.1", start_port=5000, end_port=5100, num_peers=10):
+def generate_random_peers(ip="127.0.0.1", start_port=5000, end_port=5010, num_peers=10):
     """
     Generate a list of random peer tuples with the format (ip, port).
     :param ip: The IP address to use for all peers.
@@ -41,7 +41,7 @@ def generate_random_peers(ip="127.0.0.1", start_port=5000, end_port=5100, num_pe
     return [(ip, port) for port in ports]
 
 # Example usage
-peers = generate_random_peers(start_port=5000, end_port=5100, num_peers=100)
+peers = generate_random_peers()
 print(peers)
 
 
