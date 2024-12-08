@@ -14,10 +14,12 @@ def send_transaction(sender, recipient, amount, peers):
             client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             client.connect(peer)
             client.send(json.dumps(transaction_data).encode('utf-8'))
-            print(f"Transaction sent from {sender} to {recipient} for amount {amount} to {peer}")
+            # print(f"Transaction sent from {sender} to {recipient} for amount {amount} to {peer}")
+            print(f"Transaction sent from {sender} to {recipient} for amount {amount}")
             client.close()
         except Exception as e:
-            print(f"Failed to send transaction to {peer}: {e}")
+            # print(f"Failed to send transaction to {peer}: {e}")
+            pass
 
 if __name__ == "__main__":
     sender = input(f"Enter sender name: ")
@@ -42,7 +44,7 @@ def generate_random_peers(ip="127.0.0.1", start_port=5000, end_port=5010, num_pe
 
 # Example usage
 peers = generate_random_peers()
-print(peers)
+# print(peers)
 
 
 send_transaction(sender, recipient, amount, peers)

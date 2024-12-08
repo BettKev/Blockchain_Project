@@ -111,12 +111,12 @@ class Node:
             
             # Parse the data received
             peer_list = json.loads(data)
-            print(f"Parsed peer list: {peer_list}")  # Debugging output
+            # print(f"Parsed peer list: {peer_list}")  # Debugging output
         
             # Convert the list of lists into a tuple of tuples
             self.peers = [tuple(peer) for peer in peer_list]
 
-            print(f"Discovered peers: {self.peers}")
+            # print(f"Discovered peers: {self.peers}")
             client.close()
         except Exception as e:
             print(f"Failed to fetch peers: {e}")
@@ -159,7 +159,8 @@ class Node:
             client.close()
             print(f"Sent data to peer {peer}: {data}")
         except Exception as e:
-            print(f"Failed to send data to peer {peer}: {e}")
+            # print(f"Failed to send data to peer {peer}: {e}")
+            pass
 
     def discover_peers(self):
         """
@@ -188,4 +189,4 @@ class Node:
         """
         while True:
             self.discover_peers()
-            time.sleep(30)  # Adjust interval as needed
+            time.sleep(100)  # Adjust interval as needed
